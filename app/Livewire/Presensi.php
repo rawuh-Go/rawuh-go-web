@@ -18,7 +18,7 @@ class Presensi extends Component
     public $latitude;
     public $longitude;
     public $insideRadius = false;
-    public $showCamera = false;
+    public $showPhotoUploadPage = false;
     public $photo;
 
     protected $rules = [
@@ -32,6 +32,11 @@ class Presensi extends Component
         $schedule = Schedule::where('user_id', Auth::user()->id)->first();
         $attendance = Attendance::where('user_id', Auth::user()->id)
             ->whereDate('created_at', date('Y-m-d'))->first();
+
+        if ($this->showPhotoUploadPage) {
+            return view('livewire.presensi-photo-upload');
+        }
+
         return view('livewire.presensi', [
             'schedule' => $schedule,
             'insideRadius' => $this->insideRadius,
@@ -47,7 +52,7 @@ class Presensi extends Component
         ]);
 
         if ($this->insideRadius) {
-            $this->showCamera = true;
+            $this->showPhotoUploadPage = true;
         } else {
             session()->flash('error', 'Anda berada di luar radius yang diizinkan.');
         }
@@ -59,7 +64,7 @@ class Presensi extends Component
 
         $schedule = Schedule::where('user_id', Auth::user()->id)->first();
 
-        // Cek jika sedang cuti
+        // Check for approved leave
         $today = Carbon::today()->format('Y-m-d');
         $approveLeave = Leave::where('user_id', Auth::user()->id)
             ->where('status', 'approve')
@@ -86,7 +91,7 @@ class Presensi extends Component
             $photoPath = $this->photo->storeAs($folderPath, $fileName, 'public');
 
             if (!$attendance) {
-                // Presensi masuk
+                // Clock in
                 Attendance::create([
                     'user_id' => $user->id,
                     'schedule_latitude' => $schedule->office->latitude,
@@ -101,7 +106,7 @@ class Presensi extends Component
                 ]);
                 session()->flash('message', 'Presensi masuk berhasil.');
             } else {
-                // Presensi pulang
+                // Clock out
                 if ($attendance->waktu_pulang) {
                     session()->flash('error', 'Anda sudah melakukan presensi pulang hari ini.');
                     return;
@@ -115,8 +120,13 @@ class Presensi extends Component
                 session()->flash('message', 'Presensi pulang berhasil.');
             }
 
-            $this->reset(['photo', 'showCamera']);
+            $this->reset(['photo', 'showPhotoUploadPage']);
             return redirect('admin/attendances');
         }
+    }
+
+    public function backToMap()
+    {
+        $this->showPhotoUploadPage = false;
     }
 }
