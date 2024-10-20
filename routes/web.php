@@ -14,3 +14,7 @@ Route::get('/login', function () {
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/camera-test', function () {
+    return view('camera_test');
+});

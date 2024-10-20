@@ -20,9 +20,10 @@ class Presensi extends Component
     public $insideRadius = false;
     public $showPhotoUploadPage = false;
     public $photo;
+    protected $listeners = ['setPhoto', 'submitPresensi'];
 
     protected $rules = [
-        'photo' => 'required|image|max:1024', // max 1MB
+        'photo' => 'required',
         'latitude' => 'required',
         'longitude' => 'required',
     ];
@@ -33,32 +34,24 @@ class Presensi extends Component
         $attendance = Attendance::where('user_id', Auth::user()->id)
             ->whereDate('created_at', date('Y-m-d'))->first();
 
-        if ($this->showPhotoUploadPage) {
-            return view('livewire.presensi-photo-upload');
-        }
-
         return view('livewire.presensi', [
             'schedule' => $schedule,
             'insideRadius' => $this->insideRadius,
             'attendance' => $attendance,
+            'showPhotoUploadPage' => $this->showPhotoUploadPage,
         ]);
     }
 
-    public function initiateAttendance()
+    public function setPhoto($photoData)
     {
-        $this->validate([
-            'latitude' => 'required',
-            'longitude' => 'required',
-        ]);
-
-        if ($this->insideRadius) {
-            $this->showPhotoUploadPage = true;
-        } else {
-            session()->flash('error', 'Anda berada di luar radius yang diizinkan.');
-        }
+        $this->photo = $photoData;
     }
 
-    public function capturePhoto()
+    public function showPhotoUpload()
+    {
+        $this->showPhotoUploadPage = true;
+    }
+    public function submitPresensi()
     {
         $this->validate();
 
@@ -82,13 +75,18 @@ class Presensi extends Component
                 ->whereDate('created_at', date('Y-m-d'))->first();
 
             $user = Auth::user();
-            $fileName = time() . '.' . $this->photo->getClientOriginalExtension();
+            $fileName = time() . '.png';
             $folderPath = 'attendance/' . $user->name;
 
             // Ensure the directory exists
             Storage::disk('public')->makeDirectory($folderPath);
 
-            $photoPath = $this->photo->storeAs($folderPath, $fileName, 'public');
+            // Decode the base64 image
+            $image = $this->decodeBase64Image($this->photo);
+
+            // Save the image
+            $photoPath = $folderPath . '/' . $fileName;
+            Storage::disk('public')->put($photoPath, $image);
 
             if (!$attendance) {
                 // Clock in
@@ -121,7 +119,22 @@ class Presensi extends Component
             }
 
             $this->reset(['photo', 'showPhotoUploadPage']);
+            $this->emit('photoSaved');
             return redirect('admin/attendances');
+        }
+    }
+
+    public function initiateAttendance()
+    {
+        $this->validate([
+            'latitude' => 'required',
+            'longitude' => 'required',
+        ]);
+
+        if ($this->insideRadius) {
+            $this->showPhotoUploadPage = true;
+        } else {
+            session()->flash('error', 'Anda berada di luar radius yang diizinkan.');
         }
     }
 

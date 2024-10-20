@@ -2,40 +2,81 @@
     <div class="container mx-auto max-w-5xl px-4">
         <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
             <div class="p-8">
-                <h1 class="text-4xl font-bold text-gray-800 mb-8 text-center">Upload Foto Presensi</h1>
+                <h1 class="text-4xl font-bold text-gray-800 mb-8 text-center">Ambil Foto Presensi</h1>
 
-                <!-- Photo Upload Form -->
                 <div class="bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl p-6 shadow-md">
                     <h2 class="text-2xl font-semibold text-gray-800 mb-4">Ambil Foto</h2>
 
-                    @if (session()->has('error'))
-                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4"
-                            role="alert">
-                            <span class="block sm:inline">{{ session('error') }}</span>
-                        </div>
-                    @endif
+                    <div class="mb-4">
+                        <video id="video" width="100%" height="auto" autoplay playsinline></video>
+                    </div>
 
-                    <form wire:submit.prevent="capturePhoto" class="space-y-4">
-                        <div>
-                            <label for="photo" class="block text-sm font-medium text-gray-700 mb-2">Pilih atau Ambil
-                                Foto</label>
-                            <input type="file" wire:model="photo" id="photo" accept="image/*" capture="user" class="block w-full text-sm text-gray-500
-                                file:mr-4 file:py-2 file:px-4
-                                file:rounded-full file:border-0
-                                file:text-sm file:font-semibold
-                                file:bg-blue-50 file:text-blue-700
-                                hover:file:bg-blue-100
-                            " />
-                            @error('photo') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                        </div>
-
-                        <button type="submit"
-                            class="w-full px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-50 shadow-md">
-                            Submit Presensi dengan Foto
+                    <div class="flex justify-between">
+                        <button id="ambilFotoBtn"
+                            class="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 shadow-md">
+                            Ambil Foto
                         </button>
-                    </form>
+                        <button id="submitPresensiBtn"
+                            class="px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-50 shadow-md">
+                            Submit Presensi
+                        </button>
+                    </div>
                 </div>
+
+                <button wire:click="backToMap"
+                    class="mt-4 px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 shadow-md">
+                    Kembali ke Peta
+                </button>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    let videoStream;
+
+    document.addEventListener('livewire:load', function () {
+        console.log('Livewire loaded, initializing camera');
+        initializeCamera();
+    });
+
+    function initializeCamera() {
+        const video = document.getElementById('video');
+        const ambilFotoBtn = document.getElementById('ambilFotoBtn');
+        const submitPresensiBtn = document.getElementById('submitPresensiBtn');
+
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function (stream) {
+                    videoStream = stream;
+                    video.srcObject = stream;
+                    video.play();
+                })
+                .catch(function (error) {
+                    console.error("Unable to access the camera: ", error);
+                    alert("Unable to access the camera. Please make sure you've granted permission.");
+                });
+        } else {
+            alert("Sorry, your browser does not support accessing the camera.");
+        }
+
+        ambilFotoBtn.addEventListener('click', function () {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const imageDataUrl = canvas.toDataURL('image/jpeg');
+            @this.set('photo', imageDataUrl);
+        });
+
+        submitPresensiBtn.addEventListener('click', function () {
+            @this.call('submitPresensi');
+        });
+    }
+
+    document.addEventListener('livewire:navigated', function () {
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+        }
+    });
+</script>
