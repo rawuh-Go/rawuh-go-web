@@ -88,21 +88,28 @@
                     <!-- Photo Upload Section -->
                     <div x-data="cameraHandler()" x-init="initializeCamera">
                         <h2 class="text-2xl font-semibold text-gray-800 mb-4">Ambil Foto Presensi</h2>
-                        <div class="mb-4">
-                            <video x-ref="video" width="100%" height="auto" autoplay playsinline></video>
+                        <div class="mb-4 relative">
+                            <video x-show="!photoTaken" x-ref="video" width="100%" height="auto" autoplay playsinline
+                                class="rounded-lg shadow-md"></video>
+                            <img x-show="photoTaken" :src="photoPreview" alt="Preview"
+                                class="w-full h-auto rounded-lg shadow-md">
                         </div>
-                        <div class="flex justify-between">
-                            <button @click="capturePhoto"
+                        <div class="flex justify-between mb-4">
+                            <button x-show="!photoTaken" @click="capturePhoto"
                                 class="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 shadow-md">
                                 Ambil Foto
                             </button>
-                            <button @click="submitPresensi"
+                            <button x-show="photoTaken" @click="retakePhoto"
+                                class="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-50 shadow-md">
+                                Ambil Ulang
+                            </button>
+                            <button x-show="photoTaken" @click="submitPresensi"
                                 class="px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-50 shadow-md">
                                 Submit Presensi
                             </button>
                         </div>
                         <button wire:click="backToMap"
-                            class="mt-4 px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 shadow-md">
+                            class="w-full px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50 shadow-md">
                             Kembali ke Peta
                         </button>
                     </div>
@@ -186,6 +193,8 @@
     function cameraHandler() {
         return {
             stream: null,
+            photoTaken: false,
+            photoPreview: null,
             initializeCamera() {
                 if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                     navigator.mediaDevices.getUserMedia({ video: true })
@@ -208,9 +217,22 @@
                 canvas.height = video.videoHeight;
                 canvas.getContext('2d').drawImage(video, 0, 0);
                 const imageDataUrl = canvas.toDataURL('image/jpeg');
+                this.photoPreview = imageDataUrl;
+                this.photoTaken = true;
                 @this.set('photo', imageDataUrl);
+                @this.set('photoPreview', imageDataUrl);
+            },
+            retakePhoto() {
+                this.photoTaken = false;
+                this.photoPreview = null;
+                @this.set('photo', null);
+                @this.set('photoPreview', null);
             },
             submitPresensi() {
+                if (!this.photoTaken) {
+                    alert("Silakan ambil foto terlebih dahulu!");
+                    return;
+                }
                 @this.call('submitPresensi');
             },
             stopCamera() {

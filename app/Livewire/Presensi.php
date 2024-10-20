@@ -20,7 +20,7 @@ class Presensi extends Component
     public $insideRadius = false;
     public $showPhotoUploadPage = false;
     public $photo;
-    protected $listeners = ['setPhoto', 'submitPresensi'];
+    public $photoPreview;
 
     protected $rules = [
         'photo' => 'required',
@@ -39,18 +39,21 @@ class Presensi extends Component
             'insideRadius' => $this->insideRadius,
             'attendance' => $attendance,
             'showPhotoUploadPage' => $this->showPhotoUploadPage,
+            'photoPreview' => $this->photoPreview,
         ]);
     }
 
     public function setPhoto($photoData)
     {
         $this->photo = $photoData;
+        $this->photoPreview = $photoData;
     }
 
     public function showPhotoUpload()
     {
         $this->showPhotoUploadPage = true;
     }
+
     public function submitPresensi()
     {
         $this->validate();
@@ -118,8 +121,7 @@ class Presensi extends Component
                 session()->flash('message', 'Presensi pulang berhasil.');
             }
 
-            $this->reset(['photo', 'showPhotoUploadPage']);
-            $this->emit('photoSaved');
+            $this->reset(['photo', 'photoPreview', 'showPhotoUploadPage']);
             return redirect('admin/attendances');
         }
     }
@@ -141,5 +143,13 @@ class Presensi extends Component
     public function backToMap()
     {
         $this->showPhotoUploadPage = false;
+        $this->reset(['photo', 'photoPreview']);
+    }
+
+    private function decodeBase64Image($base64String)
+    {
+        // Remove data URI scheme if present
+        $base64String = preg_replace('#^data:image/\w+;base64,#i', '', $base64String);
+        return base64_decode($base64String);
     }
 }
